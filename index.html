@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=.9, viewport-fit=cover">
+<title>Scriptool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://www.matthewmorrone.com/psi-fff.ico" rel="shortcut icon" type="image/x-icon">
+<link rel="shortcut icon" href="https://www.matthewmorrone.com/psi-white.ico" id="psi-white">
+<link rel="shortcut icon" href="https://www.matthewmorrone.com/psi-black.ico" id="psi-black">
+<style>
+@charset "UTF-8";
+@import 'https://www.matthewmorrone.com/reset.css';
+@import 'https://www.matthewmorrone.com/base.css';
+@import 'https://www.matthewmorrone.com/style.css';
+@import 'https://www.matthewmorrone.com/jquery.ui.css';
+</style>
+<script src="https://www.matthewmorrone.com/prefixfree.js"></script>
+<script src="https://www.matthewmorrone.com/jquery.js"></script>
+<script src="https://www.matthewmorrone.com/jquery.ui.js"></script>
+<script src="https://www.matthewmorrone.com/jquery.helpers.js"></script>
+<script src="https://www.matthewmorrone.com/starch.js"></script>
+<script src="icon.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+<script src="utils.js"></script>
+</head>
+<body>
+<style>
+#container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-flow: row nowrap;
+}
+.pane {
+    width: 100%;
+    overflow-x: hidden;
+}
+.handle, .editor {
+    border: 5px solid darkgray;
+}
+.handle {
+    flex: 0 0 50px;
+}
+.editor {
+    flex-grow: 1;
+    flex-basis: 25%;
+    transition: flex-basis 0.3s linear;
+    word-break: break-word;
+}
+#menu {
+    width: 200px;
+}
+#umbrianDict {
+    white-space: pre;
+
+}
+select {
+    width: 100%;
+}
+</style>
+<script>
+$(() => {
+    $(".handle").click((e) => {
+        $(e.target).next(".editor").toggle('slide', {
+            direction: 'left'
+        }, 1000);
+    });
+
+    $("#umbrianDict").on("input", function() {
+        let umbrianDict = JSON.parse($(this).text());
+
+        // let umbrianDict = JSON.parse($("#umbrianDict").text());
+        
+        /* {
+            "oʊ": "𐒷Ɐ", 
+            "aɪ": "𖼽I", 
+            "aʊ": "𖼽Ɐ", 
+            "eɪ": "𖼬I", 
+            "ə": "𖼽", 
+            "ʌ": "𖼽", "æ": "𖽀", "b": "3", "k": "C",
+            "d": "𖼄", "ð": "𑁣", "ɛ": "𖼬", "i": "𑫋",
+            "f": "8", "ɡ": "6", "h": "H", "ɪ": "I",
+            "j": "𑫣", "ɔ": "𐒷", "l": "L", "m": "M",
+            "n": "N", "ŋ": "𐳏", "ɑ": "O", "p": "P",
+            "ʍ": "Q", "ɹ": "R", "s": "S", "t": "X",
+            "θ": "Ψ", "u": "V", "ʊ": "Ɐ", "v": "9",
+            "w": "F", "ʃ": "W", "ʒ": "𑫕", "z": "𑫖"
+        } */
+        let re = new RegExp(Object.keys(umbrianDict).join('|'), 'g');
+        let umbrian = $("#sampleIpa").text().replace(re, match => umbrianDict[match]);
+        $("#sampleOutput").text(umbrian);
+    })
+
+    $("#sample").change(async function() {
+        let url = $(this).val();
+        let text = await $.get(url);
+        $("#sampleText").text(text);
+
+        let transcription = await $.get("./ipa", {input: text, debug: true});
+        $("#sampleIpa").text(transcription);
+
+        $("#umbrianDict").trigger("input");
+
+    }).val("mobydick.txt").change();
+});
+</script>
+<div id="container">
+    <div id="menu">
+        <select id="sample">
+            <option value=""></option>
+            <option value="fox.txt">Fox</option>
+            <option value="udhr.txt">Article 1</option>
+            <option value="mobydick.txt">Moby Dick</option>
+        </select>
+    </div>
+    <button class="handle"></button>
+    <div class="editor" contenteditable id="sampleText"></div>
+    <button class="handle"></button>
+    <div class="editor" contenteditable id="sampleIpa"></div>
+    <button class="handle"></button>
+    <div class="editor" contenteditable id="umbrianDict">{
+    "oʊ": "𐒷Ɐ", 
+    "aɪ": "𖼽I", 
+    "aʊ": "𖼽Ɐ", 
+    "eɪ": "𖼬I", 
+    "ə": "𖼽", 
+    "ʌ": "𖼽", "æ": "𖽀", "b": "3", "k": "C",
+    "d": "𖼄", "ð": "𑁣", "ɛ": "𖼬", "i": "𑫋",
+    "f": "8", "ɡ": "6", "h": "H", "ɪ": "I",
+    "j": "𑫣", "ɔ": "𐒷", "l": "L", "m": "M",
+    "n": "N", "ŋ": "𐳏", "ɑ": "O", "p": "P",
+    "ʍ": "Q", "ɹ": "R", "s": "S", "t": "X",
+    "θ": "Ψ", "u": "V", "ʊ": "Ɐ", "v": "9",
+    "w": "F", "ʃ": "W", "ʒ": "𑫕", "z": "𑫖"
+}</div>
+    <button class="handle"></button>
+    <div class="editor" contenteditable id="sampleOutput"></div>
+</div>
+
+
+</body>
+</html>
