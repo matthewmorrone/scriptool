@@ -29,12 +29,21 @@ foreach($file as &$line):
 endforeach;
 
 $input = strtolower($input);
-$input = str_replace([",", ".", ";", ":", "’"], "", $input);
-$input = str_replace(["—"], " ", $input);
-$input = explode(" ", $input);
+$input = str_replace(["’"], "", $input);
+$input = preg_split('/\b/', $input);
+$input = array_map("trim", $input);
+$input = array_filter($input);
 
 foreach($input as &$word):
-	if ($dict[$word]) $word = $dict[$word];
+	if ($dict[$word]) {
+		$word = $dict[$word];
+	}
+	else if (preg_match("/[\.,:;—]/", $word)) {
+		$word = "<span class='punct'>$word</span>";
+	}
+	else {
+		$word = "<span class='notfound'>$word</span>";
+	}
 endforeach;
 
 print_r(implode(" ", $input));

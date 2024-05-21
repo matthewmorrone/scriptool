@@ -50,16 +50,19 @@
     flex-basis: 25%;
     transition: flex-basis 0.3s linear;
     word-break: break-word;
+    overflow-y: scroll;
 }
 #menu {
     width: 200px;
 }
-#umbrianDict {
-    white-space: pre;
-
-}
 select {
     width: 100%;
+}
+.notfound {
+    background-color: red;
+}
+#umbrianDict {
+    white-space: pre;
 }
 </style>
 <script>
@@ -70,42 +73,32 @@ $(() => {
         }, 1000);
     });
 
-    $("#umbrianDict").on("input", function() {
-        let umbrianDict = JSON.parse($(this).text());
-
-        // let umbrianDict = JSON.parse($("#umbrianDict").text());
-        
-        /* {
-            "oʊ": "𐒷Ɐ", 
-            "aɪ": "𖼽I", 
-            "aʊ": "𖼽Ɐ", 
-            "eɪ": "𖼬I", 
-            "ə": "𖼽", 
-            "ʌ": "𖼽", "æ": "𖽀", "b": "3", "k": "C",
-            "d": "𖼄", "ð": "𑁣", "ɛ": "𖼬", "i": "𑫋",
-            "f": "8", "ɡ": "6", "h": "H", "ɪ": "I",
-            "j": "𑫣", "ɔ": "𐒷", "l": "L", "m": "M",
-            "n": "N", "ŋ": "𐳏", "ɑ": "O", "p": "P",
-            "ʍ": "Q", "ɹ": "R", "s": "S", "t": "X",
-            "θ": "Ψ", "u": "V", "ʊ": "Ɐ", "v": "9",
-            "w": "F", "ʃ": "W", "ʒ": "𑫕", "z": "𑫖"
-        } */
-        let re = new RegExp(Object.keys(umbrianDict).join('|'), 'g');
-        let umbrian = $("#sampleIpa").text().replace(re, match => umbrianDict[match]);
-        $("#sampleOutput").text(umbrian);
-    })
-
     $("#sample").change(async function() {
         let url = $(this).val();
         let text = await $.get(url);
         $("#sampleText").text(text);
 
-        let transcription = await $.get("./ipa", {input: text, debug: true});
-        $("#sampleIpa").text(transcription);
 
-        $("#umbrianDict").trigger("input");
+        $("#sampleText").trigger("input");
 
     }).val("mobydick.txt").change();
+
+
+    $("#sampleText").on("input", async function() {
+        let text = $("#sampleText").text();
+        let transcription = await $.get("./ipa", {input: text, debug: true});
+        $("#sampleIpa").html(transcription);
+        $("#umbrianDict").trigger("input");
+    })
+
+    $("#umbrianDict").on("input", function() {
+        let umbrianDict = JSON.parse($(this).text());
+        umbrianDict[" "] = " "; 
+        let re = new RegExp(Object.keys(umbrianDict).join('|'), 'g');
+        
+        let umbrian = $("#sampleIpa").text().replace(re, match => umbrianDict[match] || "<span class='notfound'>𑨩</span>");
+        $("#sampleOutput").html(umbrian);
+    });
 });
 </script>
 <div id="container">
@@ -123,19 +116,51 @@ $(() => {
     <div class="editor" contenteditable id="sampleIpa"></div>
     <button class="handle"></button>
     <div class="editor" contenteditable id="umbrianDict">{
-    "oʊ": "𐒷Ɐ", 
-    "aɪ": "𖼽I", 
-    "aʊ": "𖼽Ɐ", 
-    "eɪ": "𖼬I", 
-    "ə": "𖼽", 
-    "ʌ": "𖼽", "æ": "𖽀", "b": "3", "k": "C",
-    "d": "𖼄", "ð": "𑁣", "ɛ": "𖼬", "i": "𑫋",
-    "f": "8", "ɡ": "6", "h": "H", "ɪ": "I",
-    "j": "𑫣", "ɔ": "𐒷", "l": "L", "m": "M",
-    "n": "N", "ŋ": "𐳏", "ɑ": "O", "p": "P",
-    "ʍ": "Q", "ɹ": "R", "s": "S", "t": "X",
-    "θ": "Ψ", "u": "V", "ʊ": "Ɐ", "v": "9",
-    "w": "F", "ʃ": "W", "ʒ": "𑫕", "z": "𑫖"
+    "oʊ": "𐒷Ɐ",
+    "aɪ": "𖼽I",
+    "aʊ": "𖼽Ɐ",
+    "eɪ": "𖼬I",
+
+    "ə": "𖼽",
+    "ʌ": "𖼽",
+    "æ": "𖽀",
+    "ɛ": "𖼬",
+    "i": "𑫋",
+    "ɪ": "I",
+    "ɔ": "𐒷",
+    "ɑ": "O",
+    "u": "V",
+    "ʊ": "Ɐ",
+
+    "b": "3",
+    "k": "C",
+    "d": "𖼄",
+    "ð": "𑁣",
+    "f": "8",
+    "ɡ": "6",
+    "h": "H",
+    "j": "𑫣",
+    "l": "L",
+    "m": "M",
+    "n": "N",
+    "ŋ": "𐳏",
+    "p": "P",
+    "ʍ": "Q",
+    "ɹ": "R",
+    "s": "S",
+    "t": "X",
+    "θ": "Ψ",
+    "v": "9",
+    "w": "F",
+    "ʃ": "W",
+    "ʒ": "𑫕",
+    "z": "𑫖",
+
+    ".": "⦂",
+    ",": "∘",
+    ";": "∘",
+    ":": "∘",
+    "—": "∘"
 }</div>
     <button class="handle"></button>
     <div class="editor" contenteditable id="sampleOutput"></div>
