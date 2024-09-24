@@ -1,18 +1,13 @@
 <?php
 error_reporting(0);
-// argument 1: optional, include inflection marker column, defaults to false
-// argument 2: optional, limit number of rows
-
-// example: php main.php cmu.ipa.tsv > cmudict.ipa.tsv
 
 ini_set("memory_limit", "256M");
 
 include "str_pad_unicode.php";
 
-// $input = file($argv[1]);
 $input = $_GET["input"];
 
-$file = file("cmu-ipa-no-stress.tsv");
+$file = file("cmu-ipa-umbrian.tsv");
 
 $inflections = ($argv[1] || false);
 
@@ -38,7 +33,7 @@ foreach($input as &$word):
 	if ($dict[$word]) {
 		$word = $dict[$word];
 	}
-	else if (preg_match("/[\.,:;—]/", $word)) {
+	else if (preg_match("/[\.,:;—\?\!]/", $word)) {
 		$word = "<span class='punct'>$word</span>";
 	}
 	else {
