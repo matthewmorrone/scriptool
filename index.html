@@ -41,15 +41,19 @@
 }
 .handle, .editor {
     border: 5px solid darkgray;
+    box-sizing: border-box;
 }
 .handle {
     flex: 0 0 50px;
+    cursor: ew-resize;
 }
 .editor {
     flex-grow: 1;
     flex-basis: 25%;
-    transition: flex-basis 0.3s linear;
+    min-width: 0;
+    transition: flex-basis 0.3s linear, border-width 0.3s linear;
     word-break: break-word;
+    overflow-x: hidden;
     overflow-y: scroll;
 }
 #menu {
@@ -61,16 +65,142 @@ select {
 .notfound {
     background-color: red;
 }
-#umbrianDict {
-    white-space: pre;
+#umbrianTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: monospace;
+}
+#umbrianTable td {
+    border: 1px solid darkgray;
+    padding: 2px 6px;
+}
+#umbrianTable td.ipa-cell, #umbrianTable td.glyph-cell {
+    min-width: 2em;
+}
+#umbrianTable tr:hover .row-del {
+    visibility: visible;
+}
+.row-del {
+    visibility: hidden;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: darkred;
+    font-family: sans-serif;
+}
+#umbrianAddRow {
+    margin-top: 6px;
+    cursor: pointer;
 }
 </style>
 <script>
+const defaultMappings = [
+    ["oʊ", "𐒷Ɐ"], ["aɪ", "𖼽I"], ["aʊ", "𖼽Ɐ"], ["eɪ", "𖼬I"],
+    ["ə", "𖼽"], ["ʌ", "𖼽"], ["æ", "𖽀"], ["ɛ", "𖼬"], ["i", "𑫋"], ["ɪ", "I"],
+    ["ɔ", "𐒷"], ["ɑ", "O"], ["u", "V"], ["ʊ", "Ɐ"],
+    ["b", "3"], ["k", "C"], ["d", "𖼄"], ["ð", "𑁣"], ["f", "8"], ["ɡ", "6"],
+    ["h", "H"], ["j", "𑫣"], ["l", "L"], ["m", "M"], ["n", "N"], ["ŋ", "𐳏"],
+    ["p", "P"], ["ʍ", "Q"], ["ɹ", "R"], ["s", "S"], ["t", "X"], ["θ", "Ψ"],
+    ["v", "9"], ["w", "F"], ["ʃ", "W"], ["ʒ", "𑫕"], ["z", "𑫖"],
+    [".", "⦂"], [",", "∘"], [";", "∘"], [":", "∘"], ["—", "∘"],
+    ["\\?", "\\?"], ["\\!", "\\!"]
+];
+
+function umbrianRow(ipa, glyph) {
+    return $("<tr>").append(
+        $("<td>").addClass("ipa-cell").attr("contenteditable", true).text(ipa || ""),
+        $("<td>").addClass("glyph-cell").attr("contenteditable", true).text(glyph || ""),
+        $("<td>").append($("<button>").addClass("row-del").attr({type: "button", "aria-label": "Remove mapping"}).text("×"))
+    );
+}
+
+function readUmbrianDict() {
+    let dict = {};
+    $("#umbrianTable tr").each(function() {
+        let ipa = $(this).find(".ipa-cell").text();
+        let glyph = $(this).find(".glyph-cell").text();
+        if (ipa) dict[ipa] = glyph;
+    });
+    dict[" "] = " ";
+    return dict;
+}
+
+function updateOutput() {
+    let dict = readUmbrianDict();
+    let keys = Object.keys(dict);
+    if (!keys.length) {
+        $("#sampleOutput").empty();
+        return;
+    }
+    let re = new RegExp(keys.join('|'), 'g');
+    let umbrian = $("#sampleIpa").text().replace(re, match => dict[match] || "<span class='notfound'>𑨩</span>");
+    $("#sampleOutput").html(umbrian);
+}
+
 $(() => {
-    $(".handle").click((e) => {
-        $(e.target).next(".editor").toggle('slide', {
-            direction: 'left'
-        }, 1000);
+    defaultMappings.forEach(([ipa, glyph]) => $("#umbrianTable").append(umbrianRow(ipa, glyph)));
+    $("#umbrianAddRow").on("click", function() {
+        $("#umbrianTable").append(umbrianRow("", ""));
+        updateOutput();
+    });
+    $("#umbrianTable").on("click", ".row-del", function() {
+        $(this).closest("tr").remove();
+        updateOutput();
+    });
+    $("#umbrianTable").on("input", updateOutput);
+
+    // Each handle both toggles its pane collapsed (plain click) and
+    // resizes it (click-and-drag) - previously only the click-to-collapse
+    // existed, animated with jQuery UI's .toggle('slide'), which wraps the
+    // element and animates raw pixel width. That fights a flex layout
+    // (the .editor rule already had an unused `transition: flex-basis`
+    // for exactly this), which is why the collapse looked bad. Driving
+    // both interactions through flex-basis fixes that and reuses the same
+    // mechanism for resizing.
+    $(".handle").each(function() {
+        let $handle = $(this);
+        let $editor = $handle.next(".editor");
+        let dragging = false, moved = false, startX = 0, startWidth = 0;
+
+        $editor.data("expandedWidth", $editor.outerWidth());
+
+        $handle.on("mousedown", function(e) {
+            dragging = true;
+            moved = false;
+            startX = e.pageX;
+            startWidth = $editor.outerWidth();
+            $editor.css("transition", "none");
+            e.preventDefault();
+        });
+
+        $(document).on("mousemove", function(e) {
+            if (!dragging) return;
+            let dx = e.pageX - startX;
+            if (Math.abs(dx) > 3) moved = true;
+            let width = Math.max(40, startWidth - dx);
+            $editor.css({flexBasis: width + "px", flexGrow: 0});
+            $editor.data("expandedWidth", width);
+        });
+
+        $(document).on("mouseup", function() {
+            if (!dragging) return;
+            dragging = false;
+            $editor.css("transition", "");
+            if (!moved) {
+                let collapsed = $editor.data("collapsed");
+                if (collapsed) {
+                    $editor.css({
+                        flexBasis: $editor.data("expandedWidth") + "px",
+                        flexGrow: 0,
+                        borderWidth: "5px"
+                    });
+                } else {
+                    $editor.data("expandedWidth", $editor.outerWidth());
+                    $editor.css({flexBasis: "0px", flexGrow: 0, borderWidth: "0px"});
+                }
+                $editor.data("collapsed", !collapsed);
+            }
+        });
     });
 
     $("#sample").change(async function() {
@@ -88,17 +218,8 @@ $(() => {
         let text = $("#sampleText").text();
         let transcription = await $.get("./ipa", {input: text, debug: true});
         $("#sampleIpa").html(transcription);
-        $("#umbrianDict").trigger("input");
+        updateOutput();
     })
-
-    $("#umbrianDict").on("input", function() {
-        let umbrianDict = JSON.parse($(this).text());
-        umbrianDict[" "] = " "; 
-        let re = new RegExp(Object.keys(umbrianDict).join('|'), 'g');
-        
-        let umbrian = $("#sampleIpa").text().replace(re, match => umbrianDict[match] || "<span class='notfound'>𑨩</span>");
-        $("#sampleOutput").html(umbrian);
-    });
 });
 </script>
 <div id="container">
@@ -115,55 +236,12 @@ $(() => {
     <button class="handle"></button>
     <div class="editor" contenteditable id="sampleIpa"></div>
     <button class="handle"></button>
-    <div class="editor" contenteditable id="umbrianDict">{
-    "oʊ": "𐒷Ɐ",
-    "aɪ": "𖼽I",
-    "aʊ": "𖼽Ɐ",
-    "eɪ": "𖼬I",
-
-    "ə": "𖼽",
-    "ʌ": "𖼽",
-    "æ": "𖽀",
-    "ɛ": "𖼬",
-    "i": "𑫋",
-    "ɪ": "I",
-    "ɔ": "𐒷",
-    "ɑ": "O",
-    "u": "V",
-    "ʊ": "Ɐ",
-
-    "b": "3",
-    "k": "C",
-    "d": "𖼄",
-    "ð": "𑁣",
-    "f": "8",
-    "ɡ": "6",
-    "h": "H",
-    "j": "𑫣",
-    "l": "L",
-    "m": "M",
-    "n": "N",
-    "ŋ": "𐳏",
-    "p": "P",
-    "ʍ": "Q",
-    "ɹ": "R",
-    "s": "S",
-    "t": "X",
-    "θ": "Ψ",
-    "v": "9",
-    "w": "F",
-    "ʃ": "W",
-    "ʒ": "𑫕",
-    "z": "𑫖",
-
-    ".": "⦂",
-    ",": "∘",
-    ";": "∘",
-    ":": "∘",
-    "—": "∘",
-    "\\?": "\\?",
-    "\\!": "\\!"
-}</div>
+    <div class="editor" id="umbrianDict">
+        <table id="umbrianTable">
+            <tr><th>IPA</th><th>Glyph</th><th></th></tr>
+        </table>
+        <button type="button" id="umbrianAddRow">+ add mapping</button>
+    </div>
     <button class="handle"></button>
     <div class="editor" contenteditable id="sampleOutput"></div>
 </div>
